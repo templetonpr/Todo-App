@@ -1,0 +1,31 @@
+{
+  "name": "todo-app",
+  "version": "1.0.0",
+  "description": "A simple todo app.",
+  "main": "server.js",
+  "scripts": {
+    "test": "npm run build && mocha dist/**/*.test.js",
+    "build": "babel src -d dist",
+    "serve": "node dist/server/server.js",
+    "start": "npm run build && npm run serve"
+  },
+  "engines": {
+    "node": "7.10.0"
+  },
+  "author": "Patrick Templeton",
+  "license": "MIT",
+  "dependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-polyfill": "^6.23.0",
+    "babel-preset-env": "^1.5.0",
+    "babel-preset-stage-2": "^6.24.1",
+    "body-parser": "^1.17.2",
+    "express": "^4.15.3",
+    "mongoose": "^4.10.0"
+  },
+  "devDependencies": {
+    "expect": "^1.20.2",
+    "mocha": "^3.4.1",
+    "supertest": "^3.0.0"
+  }
+}
