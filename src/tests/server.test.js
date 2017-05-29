@@ -1,6 +1,5 @@
 import path from 'path'
 
-import 'babel-polyfill'
 import expect from 'expect'
 import request from 'supertest'
 import { MongoClient, ObjectID } from 'mongodb'
@@ -53,17 +52,16 @@ describe('Todos API', () => {
   describe('POST /todos', () => {
     it('should create a new todo with POST /todos', done => {
       let text = 'test todo test'
-      let id
       request(app)
         .post('/todos')
         .send({ text })
         .expect(200)
         .expect(res => {
-          expect(res.body.text).toBe(text)
+          expect(res.body.todo.text).toBe(text)
         })
         .end((err, res) => {
           if (err) return done(err)
-          id = res.body._id
+          let id = res.body.todo._id
           Todo.findById(id)
             .then(todo => {
               expect(todo.text).toBe(text)
@@ -101,18 +99,18 @@ describe('Todos API', () => {
       request(app)
         .get(`/todos/${id}`)
         .expect(res => {
-          expect(res.body.text).toExist()
-          expect(res.body.text).toEqual(text)
+          expect(res.body.todo.text).toExist()
+          expect(res.body.todo.text).toEqual(text)
         })
         .expect(200, done)
     })
 
-    it("should 404 on GET /todos/:id for an id that doesn't exist", done => {
+    it('should return 404 if :id was not found', done => {
       let id = new ObjectID().toHexString()
       request(app).get(`/todos/${id}`).expect(404, done)
     })
 
-    it('should 404 on GET /todos/:id for an invalid id', done => {
+    it('should return 400 if :id was invalid', done => {
       let id = '12345asdf'
       request(app)
         .get(`/todos/${id}`)
@@ -123,15 +121,15 @@ describe('Todos API', () => {
     })
   })
 
-  describe('PUT /todos/:id', () => {
-    it('should modify a todo with PUT /todos/:id', done => {
+  describe('PATCH /todos/:id', () => {
+    it('should modify the text property of a todo', done => {
       request(app)
-        .put(`/todos/${todos[0]._id}`)
+        .patch(`/todos/${todos[0]._id}`)
         .send({ text: 'modified' })
         .expect(200)
         .expect(res => {
-          expect(res.body.text).toExist()
-          expect(res.body.text).toBe('modified')
+          expect(res.body.todo.text).toExist()
+          expect(res.body.todo.text).toBe('modified')
         })
         .end((err, res) => {
           if (err) return done(err)
@@ -140,6 +138,52 @@ describe('Todos API', () => {
             return done()
           })
         })
+    })
+
+    it('should set the completed and completedAt properties when completing a todo', done => {
+      request(app)
+        .patch(`/todos/${todos[1]._id}`)
+        .send({ completed: true })
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err)
+          Todo.findById(todos[1]._id)
+            .then(todo => {
+              expect(todo.completed).toBe(true)
+              expect(todo.completedAt).toBeA('number')
+              return done()
+            })
+            .catch(err => done(err))
+        })
+    })
+
+    it('should clear completedAt when todo.completed === false', done => {
+      request(app)
+        .patch(`/todos/${todos[1]._id}`)
+        .send({ completed: false })
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err)
+          expect(res.body.todo.completed).toBe(false)
+          expect(res.body.todo.completedAt).toBe(null)
+          return done()
+        })
+    })
+
+    it('should return 400 if :id is invalid', done => {
+      let id = 'zzzzzzzzzzzzz'
+      request(app)
+        .patch(`/todos/${id}`)
+        .send({ text: 'modified' })
+        .expect(400, done)
+    })
+
+    it('should return 404 if :id was not found', done => {
+      let id = new ObjectID().toHexString()
+      request(app)
+        .patch(`/todos/${id}`)
+        .send({ text: 'modified' })
+        .expect(404, done)
     })
   })
 
@@ -155,6 +199,16 @@ describe('Todos API', () => {
             return done()
           })
         })
+    })
+
+    it('should return 404 if :id was not found', done => {
+      let id = new ObjectID().toHexString()
+      request(app).delete(`/todos/${id}`).expect(404, done)
+    })
+
+    it('should return 400 if :id is invalid', done => {
+      let id = 'qqwerqwerqwerrewq'
+      request(app).delete(`/todos/${id}`).expect(400, done)
     })
   })
 })

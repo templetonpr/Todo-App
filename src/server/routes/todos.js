@@ -1,5 +1,6 @@
 import express from 'express'
 import { ObjectID } from 'mongodb'
+import _ from 'lodash'
 
 import Todo from '../models/Todo.js'
 
@@ -21,7 +22,7 @@ route.post('/', (req, res, next) => {
   todo
     .save()
     .then(todo => {
-      return res.json(todo)
+      return res.json({ todo })
     })
     .catch(err => {
       next(err)
@@ -40,7 +41,7 @@ route.get('/:id', (req, res, next) => {
   Todo.findById(id)
     .then(todo => {
       if (!todo) return res.status(404).json({})
-      return res.json(todo)
+      return res.json({ todo })
     })
     .catch(err => {
       err.status = 400
@@ -48,9 +49,9 @@ route.get('/:id', (req, res, next) => {
     })
 })
 
-route.put('/:id', (req, res, next) => {
+route.patch('/:id', (req, res, next) => {
   let id = req.params.id
-  let text = req.body.text
+  let body = _.pick(req.body, ['text', 'completed'])
 
   if (!ObjectID.isValid(id)) {
     let err = new Error('Invalid ID format')
@@ -58,13 +59,17 @@ route.put('/:id', (req, res, next) => {
     return next(err)
   }
 
-  Todo.findOneAndUpdate(
-    { _id: id },
-    { text: text },
-    { new: true, runValidators: true }
-  )
+  if (_.isBoolean(body.completed) && body.completed) {
+    body.completedAt = Date.now()
+  } else {
+    body.completed = false
+    body.completedAt = null
+  }
+
+  Todo.findByIdAndUpdate(id, { $set: body }, { new: true })
     .then(todo => {
-      return res.json(todo)
+      if (!todo) return res.status(404).json({})
+      return res.json({ todo })
     })
     .catch(err => {
       next(err)
@@ -80,9 +85,10 @@ route.delete('/:id', (req, res, next) => {
     return next(err)
   }
 
-  Todo.findOneAndRemove({ _id: id })
+  Todo.findByIdAndRemove(id)
     .then(todo => {
-      return res.json(todo)
+      if (!todo) return res.status(404).json({})
+      return res.json({ todo })
     })
     .catch(err => {
       next(err)
