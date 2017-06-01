@@ -22,7 +22,7 @@ route.post('/', (req, res, next) => {
   todo
     .save()
     .then(todo => {
-      return res.json({ todo })
+      return res.status(201).json({ todo })
     })
     .catch(err => {
       next(err)

@@ -2,7 +2,9 @@ import path from 'path'
 
 import expect from 'expect'
 import request from 'supertest'
+
 import { MongoClient, ObjectID } from 'mongodb'
+import { populateUsers, populateTodos, dropDB } from './seedDatabase.js'
 
 // import config settings
 import config from '../config/config.js'
@@ -15,6 +17,7 @@ if (config.env !== 'test') {
 
 import app from '../server/server.js'
 import Todo from '../server/models/Todo.js'
+import User from '../server/models/User.js'
 
 describe('Server', () => {
   it('should start server and accept http requests', done => {
@@ -29,24 +32,12 @@ describe('Todos API', () => {
   let todos = []
 
   beforeEach(done => {
-    // wipe the test database
-    MongoClient.connect(config.db, (err, db) => {
-      if (err) throw err
-      todos = []
-      db
-        .dropDatabase()
-        .then(() => db.close())
-        .then(() => {
-          return Todo.insertMany([
-            { text: 'test todo 1' },
-            { text: 'test todo 2' },
-            { text: 'test todo 3' },
-          ])
-        })
-        .then(() => Todo.find())
-        .then(ts => (todos = ts))
-        .then(() => done())
-    })
+    dropDB(config.db)
+      .then(() => populateTodos(Todo))
+      .then(() => Todo.find())
+      .then(ts => (todos = ts))
+      .then(() => done())
+      .catch(err => done(err))
   })
 
   describe('POST /todos', () => {
@@ -55,7 +46,7 @@ describe('Todos API', () => {
       request(app)
         .post('/todos')
         .send({ text })
-        .expect(200)
+        .expect(201)
         .expect(res => {
           expect(res.body.todo.text).toBe(text)
         })
@@ -209,6 +200,151 @@ describe('Todos API', () => {
     it('should return 400 if :id is invalid', done => {
       let id = 'qqwerqwerqwerrewq'
       request(app).delete(`/todos/${id}`).expect(400, done)
+    })
+  })
+})
+
+describe('Authentication API', () => {
+  let users = []
+
+  beforeEach(done => {
+    dropDB(config.db)
+      .then(() => populateUsers(User))
+      .then(() => User.find())
+      .then(us => (users = us))
+      .then(() => done())
+      .catch(err => done(err))
+  })
+
+  describe('POST /users', () => {
+    it('should create a new user', done => {
+      let email = 'test@test.test'
+      let password = 'hunter2'
+      let token
+      request(app)
+        .post('/users')
+        .send({ email, password })
+        .expect(201)
+        .expect(res => {
+          expect(res.body.user.email).toBe(email)
+          expect(res.body.user._id).toExist()
+          expect(res.headers['x-auth']).toExist()
+          token = res.headers['x-auth']
+        })
+        .end((err, res) => {
+          if (err) return done(err)
+          let id = res.body.user._id
+          User.findById(id)
+            .then(user => {
+              expect(user.email).toBe(email)
+              let t = user.tokens.filter(token => token.access === 'auth')[0]
+              expect(t.token).toBe(token)
+              return done()
+            })
+            .catch(err => done(err))
+        })
+    })
+
+    it('should return an error if email is taken', done => {
+      let email = 'test123@test.test'
+      let password = '123123123123'
+
+      User.create({ email, password }).then(() => {
+        request(app)
+          .post('/users')
+          .send({ email, password })
+          .expect(400)
+          .expect(res => {
+            expect(res.body.message).toBe(
+              `User validation failed: email: The email address '${email}' is already in use. Please use a different one.`
+            )
+          })
+          .then(() => done())
+          .catch(err => done(err))
+      })
+    })
+
+    it('should return an error if email validation fails', done => {
+      request(app)
+        .post('/users')
+        .send({ email: 'test1@test', password: 'hunter2' }) // email is missing TLD
+        .expect(400)
+        .expect(res => {
+          expect(res.body.message).toBe(
+            'User validation failed: email: test1@test is not a valid email address'
+          )
+        })
+        .end(done)
+    })
+
+    it('should not store the unhashed password in the database', done => {
+      let email = 'test12345@test.test'
+      let password = '123123123123'
+
+      request(app)
+        .post('/users')
+        .send({ email, password })
+        .expect(201)
+        .then(res => res.body.user._id)
+        .then(id => User.findById(id))
+        .then(u => {
+          expect(u.password).toNotBe(password)
+          expect(u.password).toExist()
+        })
+        .then(() => done())
+        .catch(err => done(err))
+    })
+  })
+
+  describe('GET /users/me', () => {
+    it('should correctly parse jwt for valid user', done => {
+      let email = 'test54321@test.test'
+      let password = '123123123123'
+      let token = ''
+
+      request(app)
+        .post('/users')
+        .send({ email, password })
+        .expect(201)
+        .then(res => {
+          token = res.headers['x-auth']
+          expect(token).toExist()
+        })
+        .then(() => {
+          request(app)
+            .get('/users/me')
+            .set('x-auth', token)
+            .expect(200)
+            .expect(res => {
+              expect(res.body.user.email).toBe(email)
+            })
+        })
+        .then(() => done())
+        .catch(err => done(err))
+    })
+
+    it('should return an error on bad token', done => {
+      let email = 'test09876@test.test'
+      let password = '123123123123'
+      let token = ''
+
+      request(app)
+        .post('/users')
+        .send({ email, password })
+        .expect(201)
+        .then(res => {
+          token = res.headers['x-auth']
+          expect(token).toExist()
+        })
+        .then(() => {
+          request(app)
+            .get('/users/me')
+            .set('x-auth', `${token}asdasd`)
+            .expect(401)
+            .expect('invalid signature')
+        })
+        .then(() => done())
+        .catch(err => done(err))
     })
   })
 })

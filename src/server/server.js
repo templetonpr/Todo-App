@@ -63,5 +63,7 @@ export default app
 
 app.listen(PORT, err => {
   if (err) return console.error(err)
-  console.log(`Express server running on port ${app.get('PORT')} with ${app.get('env')} configuration`)
+  console.log(
+    `Express server running on port ${app.get('PORT')} with ${app.get('env')} configuration`
+  )
 })

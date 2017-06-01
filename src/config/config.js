@@ -6,7 +6,8 @@ const config = {
   env: env,
   root: rootPath,
   port: process.env.PORT || 3000,
-  db: (env === 'test') ? process.env.MONGODB_TEST_URI : process.env.MONGODB_URI,
+  db: env === 'test' ? process.env.MONGODB_TEST_URI : process.env.MONGODB_URI,
+  secretKey: process.env.SECRET_KEY,
 }
 
 export default config
