@@ -26,7 +26,7 @@ route.post('/users', (req, res, next) => {
 })
 
 route.get('/users/me', authenticate, (req, res, next) => {
-  return res.json({ user })
+  return res.json({ user: req.user })
 })
 
 export default route

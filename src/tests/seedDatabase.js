@@ -9,20 +9,28 @@ const dropDB = DB_URL => {
   })
 }
 
-const populate = seedData => model => {
-  return model.create(seedData)
+const populateUsers = model => {
+  let users = [
+    { email: 'test1@test.test', password: 'hunter1' },
+    { email: 'test2@test.test', password: 'hunter2' },
+    { email: 'test3@test.test', password: 'hunter3' },
+  ]
+  return Promise.all(
+    users.map(userData => {
+      let user = new model(userData)
+      return user.generateAuthToken().then(() => user.save())
+    })
+  )
 }
 
-const populateUsers = populate([
-  { email: 'test1@test.test', password: 'hunter2' },
-  { email: 'test2@test.test', password: 'hunter2' },
-  { email: 'test3@test.test', password: 'hunter2' },
-])
-
-const populateTodos = populate([
-  { text: 'test todo 1' },
-  { text: 'test todo 2' },
-  { text: 'test todo 3' },
-])
+const populateTodos = model => {
+  return Promise.all(
+    [
+      { text: 'test todo 1' },
+      { text: 'test todo 2' },
+      { text: 'test todo 3' },
+    ].map(todo => new model(todo).save())
+  )
+}
 
 export { populateUsers, populateTodos, dropDB }

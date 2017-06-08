@@ -34,7 +34,6 @@ describe('Todos API', () => {
   beforeEach(done => {
     dropDB(config.db)
       .then(() => populateTodos(Todo))
-      .then(() => Todo.find())
       .then(ts => (todos = ts))
       .then(() => done())
       .catch(err => done(err))
@@ -210,7 +209,6 @@ describe('Authentication API', () => {
   beforeEach(done => {
     dropDB(config.db)
       .then(() => populateUsers(User))
-      .then(() => User.find())
       .then(us => (users = us))
       .then(() => done())
       .catch(err => done(err))
@@ -298,51 +296,40 @@ describe('Authentication API', () => {
 
   describe('GET /users/me', () => {
     it('should correctly parse jwt for valid user', done => {
-      let email = 'test54321@test.test'
-      let password = '123123123123'
-      let token = ''
+      let t = users[0].tokens.filter(token => token.access === 'auth')[0].token
 
       request(app)
-        .post('/users')
-        .send({ email, password })
-        .expect(201)
-        .then(res => {
-          token = res.headers['x-auth']
-          expect(token).toExist()
-        })
-        .then(() => {
-          request(app)
-            .get('/users/me')
-            .set('x-auth', token)
-            .expect(200)
-            .expect(res => {
-              expect(res.body.user.email).toBe(email)
-            })
+        .get('/users/me')
+        .set('x-auth', t)
+        .expect(200)
+        .expect(res => {
+          expect(res.body.user.email).toBe(users[0].email)
         })
         .then(() => done())
         .catch(err => done(err))
     })
 
-    it('should return an error on bad token', done => {
-      let email = 'test09876@test.test'
-      let password = '123123123123'
-      let token = ''
+    it('should return an error on malformed token', done => {
+      let t = 'this_is_obviously_a_fake_token'
 
       request(app)
-        .post('/users')
-        .send({ email, password })
-        .expect(201)
-        .then(res => {
-          token = res.headers['x-auth']
-          expect(token).toExist()
-        })
-        .then(() => {
-          request(app)
-            .get('/users/me')
-            .set('x-auth', `${token}asdasd`)
-            .expect(401)
-            .expect('invalid signature')
-        })
+        .get('/users/me')
+        .set('x-auth', t)
+        .expect(401)
+        .expect(res => expect(res.body.message).toBe('jwt malformed'))
+        .then(() => done())
+        .catch(err => done(err))
+    })
+
+    it('should return an error on valid but incorrect token', done => {
+      let t = `${users[0].tokens.filter(token => token.access === 'auth')[0]
+        .token}asdasdsad`
+
+      request(app)
+        .get('/users/me')
+        .set('x-auth', t)
+        .expect(401)
+        .expect(res => expect(res.body.message).toBe('invalid signature'))
         .then(() => done())
         .catch(err => done(err))
     })
