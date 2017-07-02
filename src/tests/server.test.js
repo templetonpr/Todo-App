@@ -294,6 +294,51 @@ describe('Authentication API', () => {
     })
   })
 
+  describe('POST /users/login', () => {
+    it('should return user and token header on correct email/passwd', done => {
+      let email = users[0].email
+      let password = users[0].unhashedPassword
+
+      request(app)
+        .post('/users/login')
+        .send({ email, password })
+        .expect(200)
+        .expect(res => {
+          expect(res.headers['x-auth']).toExist()
+          expect(res.body.user.email).toBe(email)
+        })
+        .end((err, res) => {
+          if (err) return done(err)
+
+          User.findById(users[0]._id)
+            .then(user => {
+              expect(user.tokens[1]).toInclude({
+                access: 'auth',
+                token: res.headers['x-auth'],
+              })
+              done()
+            })
+            .catch(err => done(err))
+        })
+    })
+
+    it('should return an error on incorrect email/passwd', done => {
+      let email = 'test123@test.fake'
+      let password = 'fakefakefake!@#321'
+
+      request(app)
+        .post('/users/login')
+        .send({ email, password })
+        .expect(400)
+        .expect(res => {
+          expect(res.headers['x-auth']).toNotExist()
+          expect(res.body.message).toBe('Email or password incorrect')
+        })
+        .then(() => done())
+        .catch(err => done(err))
+    })
+  })
+
   describe('GET /users/me', () => {
     it('should correctly parse jwt for valid user', done => {
       let t = users[0].tokens.filter(token => token.access === 'auth')[0].token

@@ -18,6 +18,7 @@ const populateUsers = model => {
   return Promise.all(
     users.map(userData => {
       let user = new model(userData)
+      user.unhashedPassword = userData.password
       return user.generateAuthToken().then(() => user.save())
     })
   )

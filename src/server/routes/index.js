@@ -25,6 +25,20 @@ route.post('/users', (req, res, next) => {
     })
 })
 
+route.post('/users/login', (req, res, next) => {
+  let { email, password } = _.pick(req.body, ['email', 'password'])
+  User.findByCredentials(email, password)
+    .then(user => {
+      return user
+        .generateAuthToken()
+        .then(token => res.status(200).header('x-auth', token).json({ user }))
+    })
+    .catch(err => {
+      err.status = 400
+      return next(err)
+    })
+})
+
 route.get('/users/me', authenticate, (req, res, next) => {
   return res.json({ user: req.user })
 })

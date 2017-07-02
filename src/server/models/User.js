@@ -78,6 +78,20 @@ User.statics.findByToken = function(token) {
   })
 }
 
+User.statics.findByCredentials = function(email, password) {
+  let User = this
+  return User.findOne({ email }).then(user => {
+    if (!user) return Promise.reject(new Error('Email or password incorrect'))
+    return new Promise((resolve, reject) => {
+      bcrypt.compare(password, user.password, (err, res) => {
+        if (err) return reject(err)
+        if (!res) return reject(new Error('Email or password incorrect'))
+        return resolve(user)
+      })
+    })
+  })
+}
+
 User.pre('save', function(next) {
   let user = this
   if (user.isModified('password')) {
