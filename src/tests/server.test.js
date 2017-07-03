@@ -312,7 +312,7 @@ describe('Authentication API', () => {
 
           User.findById(users[0]._id)
             .then(user => {
-              expect(user.tokens[1]).toInclude({
+              expect(user.tokens[0]).toInclude({
                 access: 'auth',
                 token: res.headers['x-auth'],
               })
@@ -341,14 +341,16 @@ describe('Authentication API', () => {
 
   describe('GET /users/me', () => {
     it('should correctly parse jwt for valid user', done => {
-      let t = users[0].tokens.filter(token => token.access === 'auth')[0].token
-
-      request(app)
-        .get('/users/me')
-        .set('x-auth', t)
-        .expect(200)
-        .expect(res => {
-          expect(res.body.user.email).toBe(users[0].email)
+      users[0]
+        .generateAuthToken()
+        .then(t => {
+          request(app)
+            .get('/users/me')
+            .set('x-auth', t)
+            .expect(200)
+            .expect(res => {
+              expect(res.body.user.email).toBe(users[0].email)
+            })
         })
         .then(() => done())
         .catch(err => done(err))
@@ -367,14 +369,16 @@ describe('Authentication API', () => {
     })
 
     it('should return an error on valid but incorrect token', done => {
-      let t = `${users[0].tokens.filter(token => token.access === 'auth')[0]
-        .token}asdasdsad`
-
-      request(app)
-        .get('/users/me')
-        .set('x-auth', t)
-        .expect(401)
-        .expect(res => expect(res.body.message).toBe('invalid signature'))
+      users[0]
+        .generateAuthToken()
+        .then(t => `${t}asdfasdfasdf`) // mess up the token signature
+        .then(t => {
+          request(app)
+            .get('/users/me')
+            .set('x-auth', t)
+            .expect(401)
+            .expect(res => expect(res.body.message).toBe('invalid signature'))
+        })
         .then(() => done())
         .catch(err => done(err))
     })
