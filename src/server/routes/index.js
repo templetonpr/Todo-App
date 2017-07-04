@@ -39,6 +39,18 @@ route.post('/users/login', (req, res, next) => {
     })
 })
 
+route.delete('/users/me/token', authenticate, (req, res, next) => {
+  req.user
+    .removeToken(req.token)
+    .then(() => res.status(200).json({ success: true }))
+    .catch(err => {
+      // TODO: err is a mongoose error. Log it and send the user a different one...
+      err.status = 500
+      console.log(err)
+      return next(err)
+    })
+})
+
 route.get('/users/me', authenticate, (req, res, next) => {
   return res.json({ user: req.user })
 })

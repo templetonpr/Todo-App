@@ -63,6 +63,11 @@ User.methods.generateAuthToken = function() {
   })
 }
 
+User.methods.removeToken = function(token) {
+  let user = this
+  return user.update({ $pull: { tokens: { token } } })
+}
+
 User.statics.findByToken = function(token) {
   let User = this
   let decoded

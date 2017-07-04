@@ -378,9 +378,29 @@ describe('Authentication API', () => {
             .set('x-auth', t)
             .expect(401)
             .expect(res => expect(res.body.message).toBe('invalid signature'))
+            .then(() => done())
+            .catch(err => done(err))
         })
-        .then(() => done())
-        .catch(err => done(err))
+    })
+  })
+
+  describe('DELETE /users/me/token', () => {
+    it('should log the user out', done => {
+      users[0].generateAuthToken().then(token => {
+        request(app)
+          .delete('/users/me/token')
+          .set('x-auth', token)
+          .expect(200, { success: true })
+          .end((err, res) => {
+            if (err) return done(err)
+            User.findById(users[0]._id)
+              .then(user => {
+                expect(user.tokens.length).toBe(0)
+              })
+              .then(() => done())
+              .catch(err => done(err))
+          })
+      })
     })
   })
 })
