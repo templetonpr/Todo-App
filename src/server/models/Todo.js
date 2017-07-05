@@ -17,6 +17,10 @@ const Todo = new Schema(
       type: Number,
       default: null,
     },
+    _creator: {
+      required: true,
+      type: Schema.Types.ObjectId,
+    },
   },
   {
     timestamps: true,

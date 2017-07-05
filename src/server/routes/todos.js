@@ -2,12 +2,13 @@ import express from 'express'
 import { ObjectID } from 'mongodb'
 import _ from 'lodash'
 
+import authenticate from './../middleware/authenticate.js'
 import Todo from '../models/Todo.js'
 
 const route = new express.Router()
 
-route.get('/', (req, res, next) => {
-  Todo.find()
+route.get('/', authenticate, (req, res, next) => {
+  Todo.find({ _creator: req.user._id })
     .then(todos => {
       return res.json({ todos })
     })
@@ -16,9 +17,9 @@ route.get('/', (req, res, next) => {
     })
 })
 
-route.post('/', (req, res, next) => {
+route.post('/', authenticate, (req, res, next) => {
   let text = req.body.text
-  let todo = new Todo({ text: text })
+  let todo = new Todo({ text: text, _creator: req.user._id })
   todo
     .save()
     .then(todo => {
@@ -29,7 +30,7 @@ route.post('/', (req, res, next) => {
     })
 })
 
-route.get('/:id', (req, res, next) => {
+route.get('/:id', authenticate, (req, res, next) => {
   let id = req.params.id
 
   if (!ObjectID.isValid(id)) {
@@ -38,7 +39,7 @@ route.get('/:id', (req, res, next) => {
     return next(err)
   }
 
-  Todo.findById(id)
+  Todo.findOne({ _id: id, _creator: req.user._id })
     .then(todo => {
       if (!todo) return res.status(404).json({})
       return res.json({ todo })
@@ -49,7 +50,7 @@ route.get('/:id', (req, res, next) => {
     })
 })
 
-route.patch('/:id', (req, res, next) => {
+route.patch('/:id', authenticate, (req, res, next) => {
   let id = req.params.id
   let body = _.pick(req.body, ['text', 'completed'])
 
@@ -66,7 +67,11 @@ route.patch('/:id', (req, res, next) => {
     body.completedAt = null
   }
 
-  Todo.findByIdAndUpdate(id, { $set: body }, { new: true })
+  Todo.findOneAndUpdate(
+    { _id: id, _creator: req.user._id },
+    { $set: body },
+    { new: true }
+  )
     .then(todo => {
       if (!todo) return res.status(404).json({})
       return res.json({ todo })
@@ -76,7 +81,7 @@ route.patch('/:id', (req, res, next) => {
     })
 })
 
-route.delete('/:id', (req, res, next) => {
+route.delete('/:id', authenticate, (req, res, next) => {
   let id = req.params.id
 
   if (!ObjectID.isValid(id)) {
@@ -85,7 +90,7 @@ route.delete('/:id', (req, res, next) => {
     return next(err)
   }
 
-  Todo.findByIdAndRemove(id)
+  Todo.findOneAndRemove({ _id: id, _creator: req.user._id })
     .then(todo => {
       if (!todo) return res.status(404).json({})
       return res.json({ todo })
