@@ -1,13 +1,13 @@
-import express from 'express'
-import { ObjectID } from 'mongodb'
-import _ from 'lodash'
+import express from "express"
+import { ObjectID } from "mongodb"
+import _ from "lodash"
 
-import authenticate from './../middleware/authenticate.js'
-import Todo from '../models/Todo.js'
+import authenticate from "./../middleware/authenticate.js"
+import Todo from "../models/Todo.js"
 
 const route = new express.Router()
 
-route.get('/', authenticate, (req, res, next) => {
+route.get("/", authenticate, (req, res, next) => {
   Todo.find({ _creator: req.user._id })
     .then(todos => {
       return res.json({ todos })
@@ -17,7 +17,7 @@ route.get('/', authenticate, (req, res, next) => {
     })
 })
 
-route.post('/', authenticate, (req, res, next) => {
+route.post("/", authenticate, (req, res, next) => {
   let text = req.body.text
   let todo = new Todo({ text: text, _creator: req.user._id })
   todo
@@ -30,11 +30,11 @@ route.post('/', authenticate, (req, res, next) => {
     })
 })
 
-route.get('/:id', authenticate, (req, res, next) => {
+route.get("/:id", authenticate, (req, res, next) => {
   let id = req.params.id
 
   if (!ObjectID.isValid(id)) {
-    let err = new Error('Invalid ID format')
+    let err = new Error("Invalid ID format")
     err.status = 400
     return next(err)
   }
@@ -50,12 +50,12 @@ route.get('/:id', authenticate, (req, res, next) => {
     })
 })
 
-route.patch('/:id', authenticate, (req, res, next) => {
+route.patch("/:id", authenticate, (req, res, next) => {
   let id = req.params.id
-  let body = _.pick(req.body, ['text', 'completed'])
+  let body = _.pick(req.body, ["text", "completed"])
 
   if (!ObjectID.isValid(id)) {
-    let err = new Error('Invalid ID format')
+    let err = new Error("Invalid ID format")
     err.status = 400
     return next(err)
   }
@@ -81,11 +81,11 @@ route.patch('/:id', authenticate, (req, res, next) => {
     })
 })
 
-route.delete('/:id', authenticate, (req, res, next) => {
+route.delete("/:id", authenticate, (req, res, next) => {
   let id = req.params.id
 
   if (!ObjectID.isValid(id)) {
-    let err = new Error('Invalid ID format')
+    let err = new Error("Invalid ID format")
     err.status = 400
     return next(err)
   }

@@ -21,10 +21,13 @@ import User from '../server/models/User.js'
 
 describe('Server', () => {
   it('should start server and accept http requests', done => {
-    request(app).get('/').expect(200).end((err, res) => {
-      if (err) return done(err)
-      return done()
-    })
+    request(app)
+      .get('/')
+      .expect(200)
+      .end((err, res) => {
+        if (err) return done(err)
+        return done()
+      })
   })
 })
 
@@ -49,8 +52,8 @@ describe('Authentication API', () => {
         .expect(201)
         .expect(res => {
           expect(res.body.user.email).toBe(email)
-          expect(res.body.user._id).toExist()
-          expect(res.headers['x-auth']).toExist()
+          expect(res.body.user._id).toBeTruthy()
+          expect(res.headers['x-auth']).toBeTruthy()
           token = res.headers['x-auth']
         })
         .end((err, res) => {
@@ -78,7 +81,9 @@ describe('Authentication API', () => {
           .expect(400)
           .expect(res => {
             expect(res.body.message).toBe(
-              `User validation failed: email: The email address '${email}' is already in use. Please use a different one.`
+              `User validation failed: email: The email address '${
+                email
+              }' is already in use. Please use a different one.`
             )
           })
           .then(() => done())
@@ -110,8 +115,8 @@ describe('Authentication API', () => {
         .then(res => res.body.user._id)
         .then(id => User.findById(id))
         .then(u => {
-          expect(u.password).toNotBe(password)
-          expect(u.password).toExist()
+          expect(u.password).not.toBe(password)
+          expect(u.password).toBeTruthy()
         })
         .then(() => done())
         .catch(err => done(err))
@@ -128,7 +133,7 @@ describe('Authentication API', () => {
         .send({ email, password })
         .expect(200)
         .expect(res => {
-          expect(res.headers['x-auth']).toExist()
+          expect(res.headers['x-auth']).toBeTruthy()
           expect(res.body.user.email).toBe(email)
         })
         .end((err, res) => {
@@ -136,7 +141,7 @@ describe('Authentication API', () => {
 
           User.findById(sampleData.users[1]._id)
             .then(user => {
-              expect(user.tokens[0]).toInclude({
+              expect(user.toObject().tokens[0]).toMatchObject({
                 access: 'auth',
                 token: res.headers['x-auth'],
               })
@@ -155,7 +160,7 @@ describe('Authentication API', () => {
         .send({ email, password })
         .expect(400)
         .expect(res => {
-          expect(res.headers['x-auth']).toNotExist()
+          expect(res.headers['x-auth']).toBeFalsy()
           expect(res.body.message).toBe('Email or password incorrect')
         })
         .then(() => done())
@@ -297,7 +302,7 @@ describe('Todos API', () => {
         .get(`/todos/${id}`)
         .set('x-auth', sampleData.users[0].tokens[0].token)
         .expect(res => {
-          expect(res.body.todo.text).toExist()
+          expect(res.body.todo.text).toBeTruthy()
           expect(res.body.todo.text).toEqual(text)
         })
         .expect(200, done)
@@ -338,7 +343,7 @@ describe('Todos API', () => {
         .send({ text: 'modified' })
         .expect(200)
         .expect(res => {
-          expect(res.body.todo.text).toExist()
+          expect(res.body.todo.text).toBeTruthy()
           expect(res.body.todo.text).toBe('modified')
         })
         .end((err, res) => {
@@ -359,7 +364,7 @@ describe('Todos API', () => {
         .end((err, res) => {
           if (err) return done(err)
           Todo.findById(sampleData.todos[1]._id).then(todo => {
-            expect(todo.text).toNotBe('modified')
+            expect(todo.text).not.toBe('modified')
             return done()
           })
         })
@@ -376,7 +381,8 @@ describe('Todos API', () => {
           Todo.findById(sampleData.todos[0]._id)
             .then(todo => {
               expect(todo.completed).toBe(true)
-              expect(todo.completedAt).toBeA('number')
+              // expect(todo.completedAt).toBeA('number')
+              expect(typeof todo.completedAt).toBe('number')
               return done()
             })
             .catch(err => done(err))
@@ -425,7 +431,7 @@ describe('Todos API', () => {
         .end((err, res) => {
           if (err) return done(err)
           Todo.findById(sampleData.todos[0]._id).then(todo => {
-            expect(todo).toNotExist()
+            expect(todo).toBeFalsy()
             return done()
           })
         })
@@ -440,7 +446,7 @@ describe('Todos API', () => {
           if (err) return done(err)
           Todo.findById(sampleData.todos[0]._id)
             .then(todo => {
-              expect(todo).toExist()
+              expect(todo).toBeTruthy()
               return done()
             })
             .catch(err => done(err))
